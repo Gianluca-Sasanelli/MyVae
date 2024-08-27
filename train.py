@@ -79,9 +79,8 @@ elif init_from == "resume":
     state_dict = checkpoint["model"]
     model.load_state_dict(state_dict)
     resume_epoch = checkpoint["epoch"]
-    best_val_loss = checkpoint["best_val_losses"]
+    best_val_loss = checkpoint["best_val_loss"]
     
-num_epochs_left = num_epochs - resume_epoch
 model.to(device)
 optimizer = model.configure_optimizer(weight_decay, learning_rate = max_lr)
 if init_from == "resume":
@@ -181,7 +180,7 @@ def one_epoch_pass():
 train_losses = [[]]
 val_losses = [[]]
 print("Starting of the training loop")
-for epoch in range(num_epochs_left):
+for epoch in range(resume_epoch + 1, num_epochs):
     lr = get_lr(epoch) if decay_lr else max_lr
     for param_group in optimizer.param_groups:
         param_group["lr"] = lr

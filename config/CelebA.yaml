@@ -6,15 +6,15 @@ settings_parameters:
   size_dataset: 1.0
 
 logging_parameters:
-  out_dir: "output_CelebA"
+  out_dir: "output/output_CelebA"
   log_interval: 30
   eval_iters: 10
-  init_from: "scratch"
+  init_from: "resume"
   num_epochs: 100
 
 model_parameters:
   in_channels: 3
-  latent_dim: 128
+  latent_dimension: 128
   kld_weight: 0.00025
   hidden_dimensions: [32, 64, 128, 256, 512]
 
