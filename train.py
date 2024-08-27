@@ -5,7 +5,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from PIL import Image
 from model import VanillaVAE
+from utils import CelebA, galaxy_Dataset
 
+
+#Parser. Use --config $ConfigPath. Reading from yaml config file
 parser = argparse.ArgumentParser()
 parser.add_argument("--config", type = str, required = True, help = "config path")
 args = parser.parse_args()
@@ -13,11 +16,13 @@ config_path = args.config
 with open(config_path) as file:
     config = yaml.safe_load(file)
     
-
-#default
+#d
 device = "cuda"
-data_dir = r"C:\Users\Gianl\Desktop\celeba\img_align_celeba" #directory of images
-
+dataset = config["dataset"]
+if dataset == "CelebA":
+    data_dir = r"C:\Users\Gianl\Desktop\celeba\img_align_celeba" #directory of images
+elif dataset == "KiDS":
+    data_dir = r"C:\Users\Gianl\Desktop\MyVae\data_dir\galaxies"
 
 # Parameters
 ## Settings
@@ -29,6 +34,7 @@ del settings_params
 ##logging parameters
 logging_params = config["logging_parameters"]
 out_dir = logging_params["out_dir"]
+os.makedirs(out_dir, exist_ok=True)
 log_interval = logging_params["log_interval"]
 eval_iters = logging_params["eval_iters"]
 init_from = logging_params["init_from"]
@@ -53,6 +59,8 @@ gamma = training_params["gamma"]
 weight_decay = training_params["weight_decay"]
 decay_lr = training_params["decay_lr"]
 grad_clip = training_params["grad_clip"]
+del training_params
+del config
 #Defining the module
 model_args = dict(in_channels = in_channels, latent_dim = latent_dimension, kld_weight = kld_weight, hidden_dims = hidden_dimensions)
 #optimizer and scheduler
@@ -86,28 +94,6 @@ transform = transforms.Compose([
             transforms.ToTensor(),
         ])
 
-class CelebA(torch.utils.data.Dataset):
-
-    def __init__(self, root, transform= None, size: float = 1.0):
-        self.root = root
-        self.transform = transform
-        self.img_dir = os.path.join(self.root, 'img_align_celeba')
-        self.fns = os.listdir(self.img_dir)
-        self.size = size
-
-    def __len__(self):
-        return int(len(self.fns) * self.size)
-
-    def __getitem__(self, index):
-        fn = self.fns[index]
-        img_path = os.path.join(self.img_dir, fn)
-        img = Image.open(img_path)
-
-        if self.transform is not None:
-            img = self.transform(img)
-
-        return img
-     
 def get_batch(split):
     if split == "train":
         batch = next(iter(train_loader))
@@ -120,7 +106,11 @@ def get_lr(iter):
     
 #Initialization of train and val set
 # ------------------------------------
-data = CelebA(data_dir, transform = transform, size = size_dataset) # with size you can specify if you want the whole dataset or part of it
+if dataset == "CelebA":
+    data = CelebA(data_dir, transform = transform, size = size_dataset) # with size you can specify if you want the whole dataset or part of it
+elif dataset == "KiDS":
+    data = galaxy_Dataset(data_dir, transform = transform, size = size_dataset)
+    
 train_split = int(len(data) * 0.9)
 val_split = len(data) - train_split
 train_set, val_set = torch.utils.data.random_split(data, [train_split, val_split])

@@ -1,12 +1,13 @@
-dataset: "CelebA"
+dataset: "KiDS"
 
 settings_parameters:
   image_size: 64
   precision: "float32"
   size_dataset: 1.0
+  
 
 logging_parameters:
-  out_dir: "output_CelebA"
+  out_dir: "output_galaxiesKiDS"
   log_interval: 30
   eval_iters: 10
   init_from: "scratch"
@@ -14,7 +15,7 @@ logging_parameters:
 
 model_parameters:
   in_channels: 3
-  latent_dim: 128
+  latent_dimension: 128
   kld_weight: 0.00025
   hidden_dimensions: [32, 64, 128, 256, 512]
 

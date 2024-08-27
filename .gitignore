@@ -1,0 +1,4 @@
+  #ignore all files in directory data_dir
+
+  data_dir/
+  output/
