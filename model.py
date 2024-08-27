@@ -69,6 +69,7 @@ class VanillaVAE(nn.Module):
                                     kernel_size= 3, padding= 1),
                             nn.Tanh())
         self.apply(self._init_weights)
+        hidden_dims.reverse()
     
     def _init_weights(self, module):
         if isinstance(module, nn.Conv2d):
