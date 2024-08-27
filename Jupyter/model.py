@@ -28,13 +28,14 @@ class VanillaVAE(nn.Module):
                     nn.Conv2d(in_channels, out_channels=h_dim,
                     kernel_size= 3, stride= 2, padding  = 1),
                     nn.BatchNorm2d(h_dim),
-                    nn.SiLU())
+                    nn.LeakyReLU())
             )
             in_channels = h_dim
-
         self.encoder = nn.Sequential(*modules)
         # linear layer to obeain mean and variance of the distribution
-        self.lin = nn.Linear(hidden_dims[-1]*4, latent_dim * 2)
+        self.lin_mu = nn.Linear(hidden_dims[-1]*4, latent_dim)
+        self.lin_var = nn.Linear(hidden_dims[-1]*4, latent_dim)
+
         # starting the reconstruction of the output
         self.decoder_input = nn.Linear(latent_dim, hidden_dims[-1] * 4)
 
@@ -51,9 +52,8 @@ class VanillaVAE(nn.Module):
                                     padding=1,
                                     output_padding=1),
                     nn.BatchNorm2d(hidden_dims[i + 1]),
-                    nn.SiLU())
+                    nn.LeakyReLU())
             )
-
         self.decoder = nn.Sequential(*modules)
 
         self.final_layer = nn.Sequential(
@@ -64,27 +64,11 @@ class VanillaVAE(nn.Module):
                                             padding=1,
                                             output_padding=1),
                             nn.BatchNorm2d(hidden_dims[-1]),
-                            nn.SiLU(),
+                            nn.LeakyReLU(),
                             nn.Conv2d(hidden_dims[-1], out_channels= 3,
                                     kernel_size= 3, padding= 1),
                             nn.Tanh())
-        self.apply(self._init_weights)
-        hidden_dims.reverse()
-    
-    def _init_weights(self, module):
-        if isinstance(module, nn.Conv2d):
-            torch.nn.init.normal_(module.weight, mean = 0.0, std = 0.02)
-            if module.bias is not None:
-                torch.nn.init.zeros_(module.bias)
-        elif isinstance(module, nn.ConvTranspose2d):
-            torch.nn.init.normal_(module.weight, mean = 0.0, std = 0.02)
-            if module.bias is not None:
-                torch.nn.init.zeros_(module.bias)
-        elif isinstance(module, nn.Linear):
-            torch.nn.init.normal_(module.weight, mean = 0.0, std = 0.02)
-            if module.bias is not None:
-                torch.nn.init.zeros_(module.bias)
-                
+
 
     def encode(self, input: torch.Tensor):
         """
@@ -94,11 +78,15 @@ class VanillaVAE(nn.Module):
         :return: (torch.Tensor) List of the parameters
         """
         latent = self.encoder(input)
+        print("latent per flatten:", latent.shape)
         latent = torch.flatten(latent, start_dim=1)
-        mu, log_var = torch.chunk(self.lin(latent), 2, dim = -1)
+        print("latent flatten", latent)
+        mu = self.lin_mu(latent)
+        log_var = self.lin_var(latent)
         #clamping to prevent the kl loss to diverge
-        log_var = torch.clamp(log_var, min = -2, max = 2)
-        return mu, log_var
+        log_var = torch.clamp(log_var, 10.0)
+
+        return [mu, log_var]
 
     def decode(self, z: torch.Tensor):
         """
@@ -107,12 +95,22 @@ class VanillaVAE(nn.Module):
         :return: (torch.Tensor) [B x C x H x W]
         """
         reconstruction= self.decoder_input(z)
+        print("z to latent dimension", reconstruction.shape)
         reconstruction = reconstruction.view(-1, self.final_hidden_dim, 2, 2)
+        print("After view:", reconstruction.shape)
         reconstruction = self.decoder(reconstruction)
+        print("Before last layer:", reconstruction.shape)
         reconstruction = self.final_layer(reconstruction)
         return reconstruction
 
     def reparameterize(self, mu: torch.Tensor, logvar: torch.Tensor):
+        """
+        Reparameterization trick to sample from N(mu, var) from
+        N(0,1).
+        :param mu: (torch.Tensor) Mean of the latent Gaussian [B x D]
+        :param logvar: (torch.Tensor) Standard deviation of the latent Gaussian [B x D]
+        :return: (torch.Tensor) [B x D]
+        """
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
         return eps * std + mu
@@ -132,7 +130,7 @@ class VanillaVAE(nn.Module):
         if loss:
             losses= self.loss_function(x_hat, input, mu, log_var)
         else:
-            losses = None
+            loss = None
         return x_hat, losses
     
     def configure_optimizer(self, weight_decay, learning_rate):
@@ -155,7 +153,7 @@ class VanillaVAE(nn.Module):
         return optimizer    
 
 
-    def loss_function(self,recons, target, mu, logvar):
+    def loss_function(self,recons, target, mu, var):
         """
         Computes the VAE loss function
         :recons: (torch.Tensor) Reconstructed Image
@@ -163,14 +161,16 @@ class VanillaVAE(nn.Module):
         :mu: (torch.Tensor) Mean of the latent Gaussian 
         :var: (torch.Tensor) Variance of the latent Gaussian
         """
+        input = target
+        log_var = var
         
-        recons_loss =F.mse_loss(recons, target)
-        kld_loss = torch.mean(-0.5 * torch.sum(1 + logvar - mu ** 2 - logvar.exp(), dim = 1), dim = 0)
+        recons_loss =F.mse_loss(recons, input)
+        kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1), dim = 0)
         weighted_kld_loss = self.kld_weight * kld_loss
 
         loss = recons_loss + weighted_kld_loss
         
-        return {"loss": loss, "Reconstruction loss": recons_loss.detach(), "KLD loss": weighted_kld_loss.detach()}
+        return {"loss": loss, "Reconstruction loss": recons.loss.detach(), "KLD loss": -kld_loss.detach() }
 
     def sample(self,
             num_samples:int,
