@@ -173,7 +173,6 @@ def one_epoch_pass():
             dt = t1 -t0 
             print(f"step {i // log_interval}| loss {last_loss[0]:.5f}| reconstruction {last_loss[1]:.5f}| kld loss {last_loss[2]:.5f}| norm: {norm:.2f}| time {dt.seconds:.2f} s")
             t0 = t1
-            last_loss.zero_()
     return [last_loss[0],last_loss[1], last_loss[2]]
 
 #TRAINING LOOP
