@@ -12,7 +12,7 @@ kld_weight = 0.00025
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 model_args = dict(in_channels = in_channels, latent_dim = latent_dimension, kld_weight = kld_weight, hidden_dims = hidden_dimensions)
 num_grids = 1
-out_dir = "output_galaxiesKiDS"
+out_dir = "output\output_galaxiesKiDS"
 device = "cuda"
 num_images = 120
 seed = 42
