@@ -16,7 +16,7 @@ config_path = args.config
 with open(config_path) as file:
     config = yaml.safe_load(file)
     
-#d
+#data
 device = "cuda"
 dataset = config["dataset"]
 if dataset == "CelebA":
@@ -180,7 +180,7 @@ def one_epoch_pass():
 train_losses = [[]]
 val_losses = [[]]
 print("Starting of the training loop")
-for epoch in range(resume_epoch + 1, num_epochs):
+for epoch in range(resume_epoch, num_epochs):
     lr = get_lr(epoch) if decay_lr else max_lr
     for param_group in optimizer.param_groups:
         param_group["lr"] = lr
