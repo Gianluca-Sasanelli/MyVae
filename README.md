@@ -23,5 +23,3 @@ Replace <config_path> with the path to your config.yaml file. This configuration
 ## Sampling from KiDS galaxies 
 
 ![KiDS sampling](assets/KiDS.png)
-
-Not really that good :(
