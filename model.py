@@ -33,7 +33,7 @@ class VanillaVAE(nn.Module):
             in_channels = h_dim
 
         self.encoder = nn.Sequential(*modules)
-        # linear layer to obeain mean and variance of the distribution
+        # linear layer to obtain mean and variance of the distribution
         self.lin = nn.Linear(hidden_dims[-1]*4, latent_dim * 2)
         # starting the reconstruction of the output
         self.decoder_input = nn.Linear(latent_dim, hidden_dims[-1] * 4)
@@ -89,7 +89,7 @@ class VanillaVAE(nn.Module):
     def encode(self, input: torch.Tensor):
         """
         Encodes the input by passing through the encoder network
-        and returns the mean and variance of the latent gaussian distribution.
+        and returns the mean and variance of the latent Gaussian distribution.
         :param input: (torch.Tensor) Input torch.Tensor to encoder [N x C x H x W]
         :return: (torch.Tensor) List of the parameters
         """
@@ -113,6 +113,7 @@ class VanillaVAE(nn.Module):
         return reconstruction
 
     def reparameterize(self, mu: torch.Tensor, logvar: torch.Tensor):
+        #sampling from the latent distribution
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
         return eps * std + mu
@@ -157,7 +158,10 @@ class VanillaVAE(nn.Module):
 
     def loss_function(self,recons, target, mu, logvar):
         """
-        Computes the VAE loss function
+        Computes the VAE loss function. It s the ELBO loss, combination of MSE
+        between reconstruction and input image, and a KLD that measures the difference between
+        the latent distribution and a gaussian. We are forcing the latent distribution to be
+        gaussian so it is easier to sample wrt a normal autoencoder
         :recons: (torch.Tensor) Reconstructed Image
         :target: (torch.Tensor) Starting image
         :mu: (torch.Tensor) Mean of the latent Gaussian 
@@ -190,12 +194,6 @@ class VanillaVAE(nn.Module):
         samples = self.decode(z)
         return samples
 
-    def generate(self, x: torch.Tensor, **kwargs):
-        """
-        Given an input image x, returns the reconstructed image
-        :param x: (torch.Tensor) [B x C x H x W]
-        :return: (torch.Tensor) [B x C x H x W]
-        """
 
         return self.forward(x)[0]
     
